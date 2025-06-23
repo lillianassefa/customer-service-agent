@@ -1,4 +1,4 @@
-# Customer Service Agent - Automation Engineer Portfolio
+# AI Customer Service Agent - Enterprise Automation Portfolio
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
@@ -8,10 +8,11 @@
 [![Leaseweb](https://img.shields.io/badge/Leaseweb-Cloud-orange.svg)](https://www.leaseweb.com/)
 
 ## 🎯 Project Overview
-This is an AI-powered customer support chatbot that automatically answers customer questions about a company's products, services, and policies using advanced language models and intelligent data search.
 
-### 🚀 **Summary**
-**AI customer support system** with **Terraform infrastructure automation, Docker deployment automation, Kafka event automation, Leaseweb cloud automation, and monitoring automation**.
+This **AI Customer Service Agent** demonstrates enterprise-level automation engineering practices through a fully functional customer support system. The project showcases **infrastructure automation, container orchestration, event-driven architecture, cloud deployment, and monitoring automation** while providing intelligent AI-powered customer assistance.
+
+### 🚀 **5-Word Summary**
+**AI customer support** with **enterprise automation engineering portfolio**.
 
 ## 🏗️ Architecture Overview
 
