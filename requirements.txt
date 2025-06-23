@@ -7,3 +7,11 @@ chromadb
 faiss-cpu
 langchain_google_genai
 fastapi
+uvicorn
+pydantic
+python-multipart
+requests
+kafka-python
+prometheus-client
+psutil
+bcrypt
