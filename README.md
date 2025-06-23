@@ -8,12 +8,55 @@
 [![Leaseweb](https://img.shields.io/badge/Leaseweb-Cloud-orange.svg)](https://www.leaseweb.com/)
 
 ## 🎯 Project Overview
+This is an AI-powered customer support chatbot that automatically answers customer questions about a company's products, services, and policies using advanced language models and intelligent data search.
 
-This **Customer Service Agent** project has been transformed into a comprehensive **automation engineering portfolio** that demonstrates enterprise-level automation practices. The project showcases an **AI-powered customer support system** enhanced with **Terraform infrastructure automation, Docker deployment automation, Kafka event automation, Leaseweb cloud automation, and monitoring automation**.
-
-### 🚀 **5-Word Summary**
+### 🚀 **Summary**
 **AI customer support system** with **Terraform infrastructure automation, Docker deployment automation, Kafka event automation, Leaseweb cloud automation, and monitoring automation**.
 
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Client Apps   │    │   Load Balancer │    │   Auto Scaling  │
+│                 │───▶│   (Leaseweb)    │───▶│   Group         │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Kafka Events  │◀───│   Customer      │◀───│   Application   │
+│   (Monitoring)  │    │   Service Agent │    │   Containers    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Terraform     │    │   ChromaDB      │    │   Google AI     │
+│   Infrastructure│    │   (Vector DB)   │    │   (LLM/Embed)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+
+```
+### 🧪 **Want to Test the Customer Service Agent?**
+
+If you want to **try out the AI customer service agent** and see how it answers questions about products, services, and company information, please go to:
+
+**👉 [Testing & Running - Complete Guide](#-testing--running---complete-guide)**
+
+There you'll find:
+- **Quick 5-minute test** to get started immediately
+- **Detailed testing scenarios** for different deployment methods
+- **Example conversations** showing how the AI responds
+- **Step-by-step instructions** for using the service
+- **Troubleshooting guide** if you encounter any issues
+
+### 🎯 **For End Users**
+If you want to **use the customer service agent** (ask questions, get product information, etc.), please go to:
+
+**👉 [How to Use the Customer Service Agent](#-how-to-use-the-customer-service-agent)**
+
+There you'll find:
+- **Web interface instructions** (easiest way to test)
+- **API usage examples** with curl, Python, JavaScript
+- **Example conversations** and what you can ask about
+- **Integration examples** for web and mobile apps
 ## 🔧 Automation Engineering Features
 
 ### ✅ **Infrastructure as Code (Terraform)**
@@ -46,26 +89,6 @@ This **Customer Service Agent** project has been transformed into a comprehensiv
 - Performance optimization
 - Cost tracking and optimization
 
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Client Apps   │    │   Load Balancer │    │   Auto Scaling  │
-│                 │───▶│   (Leaseweb)    │───▶│   Group         │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                                                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Kafka Events  │◀───│   Customer      │◀───│   Application   │
-│   (Monitoring)  │    │   Service Agent │    │   Containers    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                                                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Terraform     │    │   ChromaDB      │    │   Google AI     │
-│   Infrastructure│    │   (Vector DB)   │    │   (LLM/Embed)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
 
 ## 🚀 Quick Start Guide
 
@@ -528,51 +551,6 @@ const askQuestion = async (question) => {
 - Health validation post-recovery
 - Rollback procedures
 
-## 🎯 Automation Engineer Portfolio Highlights
-
-This project demonstrates comprehensive automation engineering skills:
-
-### ✅ **Infrastructure as Code**
-- Complete Terraform setup with Leaseweb integration
-- Multi-environment deployment automation
-- Security and networking automation
-- Cost-sensitive resource allocation
-
-### ✅ **Container Orchestration**
-- Docker containerization with health checks
-- Resource limits and performance optimization
-- Security best practices implementation
-- Automated deployment pipelines
-
-### ✅ **Event-Driven Architecture**
-- Kafka integration for real-time events
-- Automated error handling and monitoring
-- Performance metrics collection
-- Cost-efficient message processing
-
-### ✅ **Cloud Native Deployment**
-- Leaseweb cloud integration
-- Automated server provisioning
-- Load balancing and auto-scaling
-- High availability setup
-
-### ✅ **Monitoring & Observability**
-- Automated health checks and alerting
-- Resource usage monitoring
-- Performance optimization
-- Cost tracking and optimization
-
-### ✅ **Security Automation**
-- Non-root execution
-- Environment variable management
-- Network security groups
-- SSL/TLS automation
-
-### ✅ **Backup & Recovery**
-- Automated backup procedures
-- Data recovery automation
-- Health validation
-- Rollback procedures
 
 ## 📋 Troubleshooting
 
@@ -597,15 +575,6 @@ This project demonstrates comprehensive automation engineering skills:
    terraform plan
    terraform refresh
    ```
-
-## 📚 Additional Resources
-
-- **[Complete Automation Guide](docs/automation_engineer.md)** - Detailed automation documentation
-- **[Terraform Documentation](https://www.terraform.io/docs)** - Infrastructure as Code
-- **[Docker Documentation](https://docs.docker.com/)** - Container orchestration
-- **[Kafka Documentation](https://kafka.apache.org/documentation/)** - Event streaming
-- **[Leaseweb API](https://developers.leaseweb.com/)** - Cloud provider
-- **[FastAPI Documentation](https://fastapi.tiangolo.com/)** - Web framework
 
 ## 🤝 Contributing
 
