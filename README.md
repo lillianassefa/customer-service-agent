@@ -12,8 +12,6 @@
 
 This **AI Customer Service Agent** demonstrates enterprise-level automation engineering practices through a fully functional customer support system. The project showcases **infrastructure automation, container orchestration, event-driven architecture, cloud deployment, and monitoring automation** while providing intelligent AI-powered customer assistance.
 
-### 🚀 **5-Word Summary**
-**AI customer support** with **enterprise automation engineering portfolio**.
 
 ## 🏗️ Architecture Overview
 
