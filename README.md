@@ -4,6 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-20.10+-blue.svg)](https://www.docker.com/)
 [![Terraform](https://img.shields.io/badge/Terraform-1.0+-purple.svg)](https://www.terraform.io/)
+[![Ansible](https://img.shields.io/badge/Ansible-2.9+-red.svg)](https://www.ansible.com/)
 [![Kafka](https://img.shields.io/badge/Kafka-3.0+-orange.svg)](https://kafka.apache.org/)
 [![Leaseweb](https://img.shields.io/badge/Leaseweb-Cloud-orange.svg)](https://www.leaseweb.com/)
 
@@ -24,16 +25,21 @@ This **AI Customer Service Agent** demonstrates enterprise-level automation engi
                                                        │
                                                        ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Kafka Events  │◀───│   Customer      │◀───│   Application   │
-│   (Monitoring)  │    │   Service Agent │    │   Containers    │
+│   Ansible       │    │   Customer      │◀───│   Application   │
+│   Automation    │───▶│   Service Agent │    │   Containers    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                                        │
                                                        ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Terraform     │    │   ChromaDB      │    │   Google AI     │
-│   Infrastructure│    │   (Vector DB)   │    │   (LLM/Embed)   │
+│   Kafka Events  │◀───│   Terraform     │    │   ChromaDB      │
+│   (Monitoring)  │    │   Infrastructure│    │   (Vector DB)   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-
+                                                       │
+                                                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Monitoring    │    │   Google AI     │    │   Configuration │
+│   & Alerting    │    │   (LLM/Embed)   │    │   Management    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 ### 🧪 **Want to Test the Customer Service Agent?**
 
@@ -59,6 +65,15 @@ There you'll find:
 - **Example conversations** and what you can ask about
 - **Integration examples** for web and mobile apps
 ## 🔧 Automation Engineering Features
+
+### ✅ **Configuration Management (Ansible)**
+- **Multi-environment deployment** (development, staging, production)
+- **Zero-downtime rolling updates** with automatic rollback
+- **Infrastructure as Code** with comprehensive playbooks
+- **Automated monitoring and alerting** setup
+- **Cost-sensitive resource allocation** and optimization
+- **Security hardening** and compliance automation
+- **Performance tuning** and system optimization
 
 ### ✅ **Infrastructure as Code (Terraform)**
 - Complete cloud infrastructure automation with Leaseweb integration
@@ -98,6 +113,7 @@ There you'll find:
 - **Python 3.8+**
 - **Docker** (for containerized deployment)
 - **Terraform** (for infrastructure deployment)
+- **Ansible** (for configuration management)
 - **Google Generative AI API Key**
 
 ### Option 1: Local Development (Recommended for Testing)
@@ -138,7 +154,30 @@ docker run -d \
 ./scripts/deploy.sh development
 ```
 
-### Option 3: Full Infrastructure (Leaseweb Cloud)
+### Option 3: Ansible Deployment (Recommended for Production)
+
+```bash
+# 1. Configure Ansible inventory
+nano ansible/inventory/hosts.yml  # Update server IPs and credentials
+
+# 2. Set environment variables
+export GOOGLE_API_KEY_DEV="your-dev-api-key"
+export GOOGLE_API_KEY_STAGING="your-staging-api-key"
+export GOOGLE_API_KEY_PROD="your-prod-api-key"
+
+# 3. Deploy using Ansible
+./scripts/ansible-deploy.sh deploy -e development
+./scripts/ansible-deploy.sh deploy -e staging
+./scripts/ansible-deploy.sh deploy -e production
+
+# 4. Perform rolling update
+./scripts/ansible-deploy.sh update -e production -v v1.2.0
+
+# 5. Setup monitoring
+./scripts/ansible-deploy.sh monitor -e production
+```
+
+### Option 4: Full Infrastructure (Leaseweb Cloud)
 
 ```bash
 # Configure Terraform
@@ -163,31 +202,59 @@ curl http://<load-balancer-ip>/health
 
 ```
 customer-service-agent/
-├── 📁 scripts/                    # Automation Scripts
-│   ├── setup.sh                   # Environment setup automation
-│   ├── deploy.sh                  # Deployment automation
-│   ├── health_check.sh            # Health monitoring
-│   ├── backup.sh                  # Backup automation
-│   ├── monitor.sh                 # System monitoring
-│   └── auto_scale.sh              # Auto-scaling automation
-├── 📁 infrastructure/             # Infrastructure as Code
-│   ├── main.tf                    # Terraform configuration
+├── 📁 ansible/                     # Configuration Management
+│   ├── 📁 inventory/               # Server inventory
+│   │   └── hosts.yml               # Multi-environment hosts
+│   ├── 📁 playbooks/               # Ansible playbooks
+│   │   ├── main.yml                # Main deployment playbook
+│   │   ├── rolling-update.yml      # Zero-downtime updates
+│   │   ├── monitoring.yml          # Monitoring setup
+│   │   └── health-check.yml        # Health validation
+│   ├── 📁 templates/               # Configuration templates
+│   └── ansible.cfg                 # Ansible configuration
+├── 📁 scripts/                     # Automation Scripts
+│   ├── setup.sh                    # Environment setup automation
+│   ├── deploy.sh                   # Deployment automation
+│   ├── ansible-deploy.sh           # Ansible deployment script
+│   ├── health_check.sh             # Health monitoring
+│   ├── backup.sh                   # Backup automation
+│   ├── monitor.sh                  # System monitoring
+│   └── auto_scale.sh               # Auto-scaling automation
+├── 📁 infrastructure/              # Infrastructure as Code
+│   ├── main.tf                     # Terraform configuration
 │   └── templates/
-│       └── user_data.sh           # Server provisioning
-├── 📁 src/                        # Application Source
-│   ├── kafka_producer.py          # Event-driven automation
-│   ├── config.py                  # Configuration management
-│   ├── search.py                  # Search functionality
-│   └── ...                        # Other modules
-├── 📁 docs/                       # Documentation
-│   └── automation_engineer.md     # Complete automation guide
-├── Dockerfile                     # Container automation
-├── requirements.txt               # Dependencies
-├── main.py                        # FastAPI application
-└── README.md                      # This file
+│       └── user_data.sh            # Server provisioning
+├── 📁 src/                         # Application Source
+│   ├── kafka_producer.py           # Event-driven automation
+│   ├── config.py                   # Configuration management
+│   ├── search.py                   # Search functionality
+│   └── ...                         # Other modules
+├── 📁 docs/                        # Documentation
+│   └── automation_engineer.md      # Complete automation guide
+├── Dockerfile                      # Container automation
+├── requirements.txt                # Dependencies
+├── main.py                         # FastAPI application
+└── README.md                       # This file
 ```
 
 ## 🔧 Automation Scripts
+
+### `scripts/ansible-deploy.sh` - Ansible Deployment Automation
+```bash
+# Comprehensive Ansible deployment with multiple environments
+./scripts/ansible-deploy.sh deploy -e production -v v1.2.0
+./scripts/ansible-deploy.sh update -e staging -v v1.3.0
+./scripts/ansible-deploy.sh monitor -e all
+```
+**Features:**
+- ✅ Multi-environment deployment (dev/staging/prod)
+- ✅ Zero-downtime rolling updates
+- ✅ Automatic rollback on failure
+- ✅ Health checks and validation
+- ✅ Cost optimization and resource limits
+- ✅ Monitoring and alerting setup
+- ✅ Backup and recovery automation
+- ✅ Performance tuning and optimization
 
 ### `scripts/setup.sh` - Environment Setup Automation
 ```bash

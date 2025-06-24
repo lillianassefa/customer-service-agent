@@ -1,0 +1,364 @@
+---
+# Customer Service Agent - Ansible Playbook
+# Automation Engineer Portfolio - Configuration Management & Deployment
+# Demonstrates: Infrastructure automation, application deployment, configuration management
+
+- name: Customer Service Agent - Complete Deployment
+  hosts: all
+  become: yes
+  vars:
+    app_name: "customer-service-agent"
+    app_user: "appuser"
+    app_group: "appuser"
+    app_directory: "/opt/{{ app_name }}"
+    python_version: "3.11"
+    environment: "{{ deployment_environment | default('development') }}"
+    
+    # Cost-sensitive resource allocation
+    resource_limits:
+      development:
+        memory_limit: "512m"
+        cpu_limit: "0.5"
+        workers: 1
+      staging:
+        memory_limit: "1g"
+        cpu_limit: "1.0"
+        workers: 2
+      production:
+        memory_limit: "2g"
+        cpu_limit: "2.0"
+        workers: 4
+
+  pre_tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+  tasks:
+    # System preparation and optimization
+    - name: Install system packages (cost-sensitive: minimal packages)
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - curl
+          - wget
+          - git
+          - htop
+          - unzip
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - prometheus-node-exporter
+          - iotop
+          - nethogs
+        state: present
+      when: ansible_os_family == "Debian"
+
+    # Performance optimization for latency-sensitive applications
+    - name: Configure system for performance (latency-optimized)
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - name: net.core.rmem_max
+          value: "16777216"
+        - name: net.core.wmem_max
+          value: "16777216"
+        - name: net.ipv4.tcp_rmem
+          value: "4096 87380 16777216"
+        - name: net.ipv4.tcp_wmem
+          value: "4096 65536 16777216"
+        - name: net.core.netdev_max_backlog
+          value: "5000"
+        - name: net.ipv4.tcp_congestion_control
+          value: "bbr"
+        - name: fs.file-max
+          value: "2097152"
+        - name: fs.inotify.max_user_watches
+          value: "524288"
+        - name: vm.swappiness
+          value: "10"
+        - name: vm.dirty_ratio
+          value: "15"
+        - name: vm.dirty_background_ratio
+          value: "5"
+
+    # Configure system limits for performance
+    - name: Configure system limits
+      lineinfile:
+        path: /etc/security/limits.conf
+        line: "{{ item }}"
+        state: present
+      loop:
+        - "* soft nofile 65536"
+        - "* hard nofile 65536"
+        - "* soft nproc 32768"
+        - "* hard nproc 32768"
+
+    # Docker installation and configuration
+    - name: Install Docker
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+        - name: Install Docker packages
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+            state: present
+
+        - name: Start and enable Docker service
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+
+    # Create application user and directory structure
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        shell: /bin/bash
+        home: "/home/{{ app_user }}"
+        create_home: yes
+        system: no
+
+    - name: Add user to docker group
+      user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+
+    - name: Create application directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+      loop:
+        - "{{ app_directory }}"
+        - "{{ app_directory }}/data"
+        - "{{ app_directory }}/logs"
+        - "{{ app_directory }}/config"
+        - "{{ app_directory }}/scripts"
+        - "{{ app_directory }}/backups"
+
+    # Python environment setup
+    - name: Create Python virtual environment
+      command: python3 -m venv "{{ app_directory }}/venv"
+      args:
+        creates: "{{ app_directory }}/venv/bin/activate"
+      become_user: "{{ app_user }}"
+
+    # Application deployment
+    - name: Copy application files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_directory }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+      loop:
+        - "main.py"
+        - "requirements.txt"
+        - "Dockerfile"
+        - ".env"
+
+    - name: Copy source code
+      copy:
+        src: "src/"
+        dest: "{{ app_directory }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    - name: Copy data files
+      copy:
+        src: "data/"
+        dest: "{{ app_directory }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    # Install Python dependencies
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_directory }}/requirements.txt"
+        virtualenv: "{{ app_directory }}/venv"
+        virtualenv_command: python3 -m venv
+      become_user: "{{ app_user }}"
+
+    # Configuration management
+    - name: Configure application environment
+      template:
+        src: "templates/app.env.j2"
+        dest: "{{ app_directory }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0600'
+
+    - name: Configure logging
+      template:
+        src: "templates/logging.conf.j2"
+        dest: "{{ app_directory }}/config/logging.conf"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    - name: Configure performance settings
+      template:
+        src: "templates/performance.conf.j2"
+        dest: "{{ app_directory }}/config/performance.conf"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    # Docker image building and deployment
+    - name: Build Docker image
+      docker_image:
+        name: "{{ app_name }}:{{ environment }}"
+        build:
+          path: "{{ app_directory }}"
+          dockerfile: Dockerfile
+        source: build
+        force_source: yes
+        state: present
+
+    - name: Stop existing container if running
+      docker_container:
+        name: "{{ app_name }}-{{ environment }}"
+        state: absent
+
+    - name: Deploy application container (cost-sensitive resource allocation)
+      docker_container:
+        name: "{{ app_name }}-{{ environment }}"
+        image: "{{ app_name }}:{{ environment }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "8000:8000"
+        volumes:
+          - "{{ app_directory }}/data:/app/data"
+          - "{{ app_directory }}/logs:/app/logs"
+        env:
+          ENVIRONMENT: "{{ environment }}"
+          GOOGLE_API_KEY: "{{ google_api_key }}"
+          CHROMA_DB_PATH: "{{ app_directory }}/chroma_db"
+          KAFKA_BOOTSTRAP_SERVERS: "{{ kafka_bootstrap_servers | default('localhost:9092') }}"
+        memory: "{{ resource_limits[environment].memory_limit }}"
+        cpu_shares: "{{ (resource_limits[environment].cpu_limit * 1024) | int }}"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+
+    # Systemd service configuration
+    - name: Configure systemd service
+      template:
+        src: "templates/customer-service-agent.service.j2"
+        dest: "/etc/systemd/system/{{ app_name }}.service"
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Enable and start systemd service
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # Monitoring and health checks
+    - name: Configure log rotation (cost-sensitive: prevent disk space issues)
+      template:
+        src: "templates/logrotate.conf.j2"
+        dest: "/etc/logrotate.d/{{ app_name }}"
+        mode: '0644'
+
+    - name: Configure monitoring cron jobs
+      template:
+        src: "templates/monitoring-cron.j2"
+        dest: "/etc/cron.d/{{ app_name }}-monitoring"
+        mode: '0644'
+
+    # Security hardening
+    - name: Configure firewall rules
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "22"   # SSH
+        - "8000" # Application
+        - "9092" # Kafka (if needed)
+
+    - name: Set proper file permissions
+      file:
+        path: "{{ app_directory }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: yes
+        mode: '0755'
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+  post_tasks:
+    - name: Wait for application to be healthy
+      uri:
+        url: "http://localhost:8000/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 30
+      delay: 2
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          🎉 Customer Service Agent deployment completed successfully!
+          
+          📋 Deployment Information:
+          - Environment: {{ environment }}
+          - Application: {{ app_name }}
+          - User: {{ app_user }}
+          - Directory: {{ app_directory }}
+          - Memory Limit: {{ resource_limits[environment].memory_limit }}
+          - CPU Limit: {{ resource_limits[environment].cpu_limit }}
+          - Workers: {{ resource_limits[environment].workers }}
+          
+          🔧 Automation Engineer Features:
+          ✅ Ansible configuration management
+          ✅ Docker containerization
+          ✅ System performance optimization
+          ✅ Security hardening
+          ✅ Monitoring and health checks
+          ✅ Cost-sensitive resource allocation
+          ✅ Automated deployment pipeline
+          
+          🌐 Access Information:
+          - Health Check: http://{{ ansible_default_ipv4.address }}:8000/health
+          - API Documentation: http://{{ ansible_default_ipv4.address }}:8000/docs
+          - Application: http://{{ ansible_default_ipv4.address }}:8000 

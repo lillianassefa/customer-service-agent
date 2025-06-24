@@ -1,0 +1,272 @@
+---
+# Customer Service Agent - Monitoring Playbook
+# Automation Engineer Portfolio - Observability & Alerting
+# Demonstrates: Monitoring automation, alerting, performance optimization
+
+- name: Customer Service Agent - Monitoring & Observability Setup
+  hosts: "{{ target_hosts | default('all') }}"
+  become: yes
+  vars:
+    app_name: "customer-service-agent"
+    monitoring_interval: 60  # seconds
+    alert_thresholds:
+      cpu_usage: 80
+      memory_usage: 80
+      disk_usage: 85
+      response_time: 2000  # milliseconds
+      error_rate: 5  # percentage
+
+  tasks:
+    # Install monitoring tools
+    - name: Install monitoring packages
+      apt:
+        name:
+          - htop
+          - iotop
+          - nethogs
+          - sysstat
+          - prometheus-node-exporter
+          - curl
+          - jq
+          - bc
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    # Configure system monitoring
+    - name: Configure sysstat for performance monitoring
+      template:
+        src: "templates/sysstat.conf.j2"
+        dest: /etc/default/sysstat
+        mode: '0644'
+      notify: restart sysstat
+
+    - name: Enable sysstat service
+      systemd:
+        name: sysstat
+        state: started
+        enabled: yes
+
+    # Configure Prometheus Node Exporter
+    - name: Configure Prometheus Node Exporter
+      template:
+        src: "templates/node-exporter.service.j2"
+        dest: /etc/systemd/system/prometheus-node-exporter.service
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Start Prometheus Node Exporter
+      systemd:
+        name: prometheus-node-exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # Application-specific monitoring
+    - name: Create monitoring scripts directory
+      file:
+        path: "/opt/{{ app_name }}/monitoring"
+        state: directory
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    - name: Deploy application monitoring script
+      template:
+        src: "templates/monitor-app.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/monitor-app.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    - name: Deploy performance monitoring script
+      template:
+        src: "templates/monitor-performance.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/monitor-performance.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    - name: Deploy alerting script
+      template:
+        src: "templates/send-alert.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/send-alert.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    # Configure log monitoring
+    - name: Configure log monitoring
+      template:
+        src: "templates/log-monitor.conf.j2"
+        dest: "/etc/logrotate.d/{{ app_name }}-monitoring"
+        mode: '0644'
+
+    # Setup monitoring cron jobs
+    - name: Configure monitoring cron jobs
+      cron:
+        name: "{{ item.name }}"
+        job: "{{ item.job }}"
+        minute: "{{ item.minute }}"
+        hour: "{{ item.hour }}"
+        user: "{{ app_user | default('appuser') }}"
+        state: present
+      loop:
+        - name: "Application Health Check"
+          job: "/opt/{{ app_name }}/monitoring/monitor-app.sh"
+          minute: "*/2"
+          hour: "*"
+        - name: "Performance Monitoring"
+          job: "/opt/{{ app_name }}/monitoring/monitor-performance.sh"
+          minute: "*/5"
+          hour: "*"
+        - name: "System Resource Check"
+          job: "/opt/{{ app_name }}/monitoring/monitor-system.sh"
+          minute: "*/10"
+          hour: "*"
+
+    # Configure alerting
+    - name: Create alerting configuration
+      template:
+        src: "templates/alerting.conf.j2"
+        dest: "/opt/{{ app_name }}/monitoring/alerting.conf"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0644'
+
+    # Setup log aggregation
+    - name: Configure rsyslog for application logs
+      template:
+        src: "templates/rsyslog-app.conf.j2"
+        dest: /etc/rsyslog.d/{{ app_name }}.conf
+        mode: '0644'
+      notify: restart rsyslog
+
+    # Performance optimization monitoring
+    - name: Configure performance monitoring
+      template:
+        src: "templates/performance-monitor.conf.j2"
+        dest: "/opt/{{ app_name }}/monitoring/performance-monitor.conf"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0644'
+
+    # Create monitoring dashboard configuration
+    - name: Create Grafana dashboard configuration
+      template:
+        src: "templates/grafana-dashboard.json.j2"
+        dest: "/opt/{{ app_name }}/monitoring/grafana-dashboard.json"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0644'
+
+    # Setup automated testing
+    - name: Deploy automated testing script
+      template:
+        src: "templates/automated-tests.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/automated-tests.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    # Configure backup monitoring
+    - name: Deploy backup monitoring script
+      template:
+        src: "templates/monitor-backup.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/monitor-backup.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    # Setup cost monitoring
+    - name: Deploy cost monitoring script
+      template:
+        src: "templates/monitor-cost.sh.j2"
+        dest: "/opt/{{ app_name }}/monitoring/monitor-cost.sh"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0755'
+
+    # Test monitoring setup
+    - name: Test monitoring configuration
+      command: "/opt/{{ app_name }}/monitoring/monitor-app.sh"
+      register: monitoring_test
+      changed_when: false
+
+    - name: Display monitoring test results
+      debug:
+        msg: "Monitoring test completed: {{ monitoring_test.stdout }}"
+
+    # Create monitoring summary
+    - name: Create monitoring status report
+      template:
+        src: "templates/monitoring-status.j2"
+        dest: "/opt/{{ app_name }}/monitoring/status.html"
+        owner: "{{ app_user | default('appuser') }}"
+        group: "{{ app_user | default('appuser') }}"
+        mode: '0644'
+
+  handlers:
+    - name: restart sysstat
+      systemd:
+        name: sysstat
+        state: restarted
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart rsyslog
+      systemd:
+        name: rsyslog
+        state: restarted
+
+  post_tasks:
+    - name: Verify monitoring services
+      systemd:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - sysstat
+        - prometheus-node-exporter
+
+    - name: Display monitoring setup summary
+      debug:
+        msg: |
+          📊 Monitoring & Observability Setup Complete!
+          
+          🔧 Monitoring Components:
+          ✅ System resource monitoring (CPU, Memory, Disk)
+          ✅ Application health checks
+          ✅ Performance monitoring
+          ✅ Log aggregation and rotation
+          ✅ Automated alerting
+          ✅ Cost monitoring
+          ✅ Backup monitoring
+          ✅ Automated testing
+          
+          📈 Metrics Available:
+          - Application response time
+          - Error rates and logs
+          - System resource usage
+          - Docker container metrics
+          - Network performance
+          - Cost optimization metrics
+          
+          🚨 Alerting Configured:
+          - CPU usage > {{ alert_thresholds.cpu_usage }}%
+          - Memory usage > {{ alert_thresholds.memory_usage }}%
+          - Disk usage > {{ alert_thresholds.disk_usage }}%
+          - Response time > {{ alert_thresholds.response_time }}ms
+          - Error rate > {{ alert_thresholds.error_rate }}%
+          
+          📋 Monitoring Scripts:
+          - /opt/{{ app_name }}/monitoring/monitor-app.sh
+          - /opt/{{ app_name }}/monitoring/monitor-performance.sh
+          - /opt/{{ app_name }}/monitoring/monitor-system.sh
+          - /opt/{{ app_name }}/monitoring/send-alert.sh
+          
+          🌐 Access Points:
+          - Node Exporter: http://{{ ansible_default_ipv4.address }}:9100
+          - Status Report: /opt/{{ app_name }}/monitoring/status.html
+          - Application Health: http://{{ ansible_default_ipv4.address }}:8000/health 

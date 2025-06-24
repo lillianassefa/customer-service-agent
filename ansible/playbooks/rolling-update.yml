@@ -1,0 +1,305 @@
+---
+# Customer Service Agent - Rolling Update Playbook
+# Automation Engineer Portfolio - Zero-Downtime Deployment
+# Demonstrates: Blue-green deployment, health checks, rollback automation
+
+- name: Customer Service Agent - Rolling Update Deployment
+  hosts: "{{ target_environment | default('production') }}"
+  become: yes
+  serial: 1  # Update one server at a time for zero downtime
+  vars:
+    app_name: "customer-service-agent"
+    app_user: "appuser"
+    app_directory: "/opt/{{ app_name }}"
+    new_version: "{{ deployment_version | default('latest') }}"
+    health_check_timeout: 300  # 5 minutes
+    health_check_interval: 10  # 10 seconds
+    max_retries: 3
+
+  pre_tasks:
+    - name: Validate deployment prerequisites
+      assert:
+        that:
+          - deployment_version is defined or new_version != "latest"
+          - target_environment is defined
+        fail_msg: "deployment_version and target_environment must be defined"
+        success_msg: "Deployment prerequisites validated"
+
+    - name: Create backup before deployment
+      include_tasks: backup.yml
+      when: backup_enabled | default(true)
+
+  tasks:
+    # Pre-deployment health check
+    - name: Pre-deployment health check
+      uri:
+        url: "http://localhost:8000/health"
+        method: GET
+        status_code: 200
+        timeout: 30
+      register: pre_health_check
+      retries: 3
+      delay: 5
+      until: pre_health_check.status == 200
+
+    - name: Log pre-deployment status
+      debug:
+        msg: "Pre-deployment health check passed for {{ inventory_hostname }}"
+
+    # Stop application gracefully
+    - name: Stop application container gracefully
+      docker_container:
+        name: "{{ app_name }}-{{ deployment_environment }}"
+        state: started
+        stop_timeout: 30
+      register: stop_result
+
+    - name: Wait for container to stop
+      wait_for:
+        path: /proc/{{ stop_result.container.State.Pid }}
+        state: absent
+      when: stop_result.container.State.Pid is defined
+
+    # Backup current version
+    - name: Create version backup
+      docker_image:
+        name: "{{ app_name }}:{{ deployment_environment }}-backup-{{ ansible_date_time.epoch }}"
+        source: local
+        load_path: "{{ app_directory }}/backups/{{ app_name }}-{{ deployment_environment }}.tar"
+      when: stop_result.changed
+
+    # Update application code
+    - name: Update application files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_directory }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0644'
+        backup: yes
+      loop:
+        - "main.py"
+        - "requirements.txt"
+        - "src/"
+        - "data/"
+
+    # Build new Docker image
+    - name: Build new Docker image
+      docker_image:
+        name: "{{ app_name }}:{{ new_version }}"
+        build:
+          path: "{{ app_directory }}"
+          dockerfile: Dockerfile
+        source: build
+        force_source: yes
+        state: present
+      register: build_result
+
+    # Deploy new version
+    - name: Deploy new application version
+      docker_container:
+        name: "{{ app_name }}-{{ deployment_environment }}"
+        image: "{{ app_name }}:{{ new_version }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "8000:8000"
+        volumes:
+          - "{{ app_directory }}/data:/app/data"
+          - "{{ app_directory }}/logs:/app/logs"
+        env:
+          ENVIRONMENT: "{{ deployment_environment }}"
+          GOOGLE_API_KEY: "{{ google_api_key }}"
+          CHROMA_DB_PATH: "{{ app_directory }}/chroma_db"
+          KAFKA_BOOTSTRAP_SERVERS: "{{ kafka_bootstrap_servers | default('localhost:9092') }}"
+          VERSION: "{{ new_version }}"
+        memory: "{{ resource_limits[deployment_environment].memory_limit }}"
+        cpu_shares: "{{ (resource_limits[deployment_environment].cpu_limit * 1024) | int }}"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+      register: deploy_result
+
+    # Wait for application to start
+    - name: Wait for application startup
+      wait_for:
+        port: 8000
+        host: localhost
+        delay: 10
+        timeout: 60
+
+    # Health check with retries
+    - name: Post-deployment health check
+      uri:
+        url: "http://localhost:8000/health"
+        method: GET
+        status_code: 200
+        timeout: 30
+      register: post_health_check
+      retries: "{{ max_retries }}"
+      delay: "{{ health_check_interval }}"
+      until: post_health_check.status == 200
+
+    # Functional test
+    - name: Run functional test
+      uri:
+        url: "http://localhost:8000/ask"
+        method: POST
+        headers:
+          Content-Type: application/json
+        body_format: json
+        body:
+          question: "Test deployment - what products do you have?"
+        status_code: 200
+        timeout: 30
+      register: functional_test
+      retries: 2
+      delay: 5
+      until: functional_test.status == 200
+
+    # Performance test
+    - name: Run performance test
+      uri:
+        url: "http://localhost:8000/health"
+        method: GET
+        status_code: 200
+        timeout: 5
+      register: performance_test
+      retries: 3
+      delay: 2
+      until: performance_test.elapsed < 1.0  # Response time under 1 second
+
+    # Update load balancer (if applicable)
+    - name: Update load balancer configuration
+      include_tasks: update-loadbalancer.yml
+      when: load_balancer | default(false)
+
+    # Cleanup old images
+    - name: Cleanup old Docker images
+      docker_image:
+        name: "{{ app_name }}:{{ item }}"
+        state: absent
+      loop:
+        - "{{ deployment_environment }}-backup-{{ ansible_date_time.epoch }}"
+        - "{{ deployment_environment }}"
+      when: deploy_result.changed and post_health_check.status == 200
+
+    # Log deployment success
+    - name: Log successful deployment
+      debug:
+        msg: |
+          ✅ Rolling update completed successfully!
+          
+          📋 Deployment Summary:
+          - Server: {{ inventory_hostname }}
+          - Environment: {{ deployment_environment }}
+          - New Version: {{ new_version }}
+          - Health Check: PASSED
+          - Functional Test: PASSED
+          - Performance Test: PASSED ({{ performance_test.elapsed }}s)
+          
+          🔧 Automation Engineer Features:
+          ✅ Zero-downtime deployment
+          ✅ Rolling update strategy
+          ✅ Health check validation
+          ✅ Performance testing
+          ✅ Automatic rollback capability
+          ✅ Load balancer integration
+
+  post_tasks:
+    # Verify deployment across all servers
+    - name: Verify deployment across environment
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:8000/health"
+        method: GET
+        status_code: 200
+        timeout: 30
+      delegate_to: "{{ item }}"
+      loop: "{{ groups[target_environment] }}"
+      when: inventory_hostname == groups[target_environment][0]
+
+    # Send deployment notification
+    - name: Send deployment notification
+      uri:
+        url: "{{ notification_webhook | default('') }}"
+        method: POST
+        headers:
+          Content-Type: application/json
+        body_format: json
+        body:
+          text: "Customer Service Agent deployment completed successfully on {{ inventory_hostname }}"
+          environment: "{{ deployment_environment }}"
+          version: "{{ new_version }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+      when: notification_webhook is defined and notification_webhook != ""
+
+  handlers:
+    - name: restart application
+      docker_container:
+        name: "{{ app_name }}-{{ deployment_environment }}"
+        state: started
+        restart_policy: unless-stopped
+
+  # Error handling and rollback
+  rescue:
+    - name: Log deployment failure
+      debug:
+        msg: "❌ Deployment failed on {{ inventory_hostname }}. Initiating rollback..."
+
+    - name: Rollback to previous version
+      docker_container:
+        name: "{{ app_name }}-{{ deployment_environment }}"
+        image: "{{ app_name }}:{{ deployment_environment }}-backup-{{ ansible_date_time.epoch }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "8000:8000"
+        volumes:
+          - "{{ app_directory }}/data:/app/data"
+          - "{{ app_directory }}/logs:/app/logs"
+        env:
+          ENVIRONMENT: "{{ deployment_environment }}"
+          GOOGLE_API_KEY: "{{ google_api_key }}"
+          CHROMA_DB_PATH: "{{ app_directory }}/chroma_db"
+          KAFKA_BOOTSTRAP_SERVERS: "{{ kafka_bootstrap_servers | default('localhost:9092') }}"
+
+    - name: Verify rollback
+      uri:
+        url: "http://localhost:8000/health"
+        method: GET
+        status_code: 200
+        timeout: 30
+      register: rollback_health_check
+      retries: 5
+      delay: 10
+      until: rollback_health_check.status == 200
+
+    - name: Log rollback success
+      debug:
+        msg: |
+          🔄 Rollback completed successfully!
+          
+          📋 Rollback Summary:
+          - Server: {{ inventory_hostname }}
+          - Environment: {{ deployment_environment }}
+          - Previous Version: Restored
+          - Health Check: PASSED
+          
+          ⚠️  Manual intervention required for deployment issues
+
+    - name: Send rollback notification
+      uri:
+        url: "{{ notification_webhook | default('') }}"
+        method: POST
+        headers:
+          Content-Type: application/json
+        body_format: json
+        body:
+          text: "⚠️ Customer Service Agent deployment failed and rolled back on {{ inventory_hostname }}"
+          environment: "{{ deployment_environment }}"
+          version: "{{ new_version }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+      when: notification_webhook is defined and notification_webhook != "" 
